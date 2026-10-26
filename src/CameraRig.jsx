@@ -7,9 +7,9 @@ export const ZONES = {
   overview: {
     label: 'Overview',
     desc: 'The whole restaurant, from above.',
-    target: [0, 0, 0],
-    pos: [14, 12, 14],
-    zoom: 50,
+    target: [0, 0, -3],
+    pos: [14, 12, 11],
+    zoom: 42,
   },
   reception: {
     label: 'Reception',
@@ -38,6 +38,27 @@ export const ZONES = {
     target: [-4.5, 0.6, -3.5],
     pos: [4.5, 8.3, 5.5],
     zoom: 90,
+  },
+  bar: {
+    label: 'Bar',
+    desc: 'Crafted drinks under warm pendant lights.',
+    target: [-4.3, 0.8, -9],
+    pos: [4.7, 8.5, 0],
+    zoom: 90,
+  },
+  private: {
+    label: 'Private Dining',
+    desc: 'A long table for celebrations and family nights.',
+    target: [3.8, 0.6, -9],
+    pos: [12.8, 8.3, 0],
+    zoom: 85,
+  },
+  terrace: {
+    label: 'Garden Terrace',
+    desc: 'Open-air tables under string lights.',
+    target: [3.2, 0.4, 8],
+    pos: [12.2, 8.1, 17],
+    zoom: 85,
   },
 }
 

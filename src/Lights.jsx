@@ -1,6 +1,6 @@
 const pendants = [
-  [0, 1.5], [3, 1.5], [6, 1.5],
-  [0, 4.5], [3, 4.5], [6, 4.5],
+  [-0.2, 1.5], [3.2, 1.5], [6.6, 1.5],
+  [-0.2, 4.5], [3.2, 4.5], [6.6, 4.5],
 ]
 
 function Pendant({ x, z, night }) {
@@ -55,11 +55,11 @@ export default function Lights({ night }) {
         intensity={night ? 0.35 : 1}
         color={night ? '#9FB4FF' : '#FFF1DC'}
         castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-15}
-        shadow-camera-right={15}
-        shadow-camera-top={15}
-        shadow-camera-bottom={-15}
+        shadow-mapSize={[4096, 4096]}
+        shadow-camera-left={-30}
+        shadow-camera-right={30}
+        shadow-camera-top={30}
+        shadow-camera-bottom={-30}
       />
 
       {pendants.map(([x, z], i) => (
@@ -69,6 +69,9 @@ export default function Lights({ night }) {
       <Glow pos={[-5, 1.8, -3.5]} night={night} />
       <Glow pos={[4, 2.2, -3]} night={night} />
       <Glow pos={[-5.5, 2, 4.2]} night={night} />
+      <Glow pos={[-4.3, 2, -9]} night={night} />
+      <Glow pos={[3.8, 2.2, -9]} night={night} />
+      <Glow pos={[3.2, 1.8, 8]} night={night} />
     </>
   )
 }

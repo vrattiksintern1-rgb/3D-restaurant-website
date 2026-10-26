@@ -8,6 +8,8 @@ import Intro from './Intro'
 import Lights, { NightToggle } from './Lights'
 import Food from './Food'
 import Journey from './Journey'
+import Outside from './Outside'
+import Sections from './Sections'
 
 const C = {
   cream: '#F5E6CC',
@@ -56,17 +58,15 @@ function Table({ x, z }) {
         <cylinderGeometry args={[0.7, 0.7, 0.1, 24]} />
         <meshStandardMaterial color={C.cream} />
       </mesh>
-      <Chair angle={0} />
       <Chair angle={Math.PI / 2} />
-      <Chair angle={Math.PI} />
       <Chair angle={(3 * Math.PI) / 2} />
     </group>
   )
 }
 
 const tables = [
-  [0, 1.5], [3, 1.5], [6, 1.5],
-  [0, 4.5], [3, 4.5], [6, 4.5],
+  [-0.2, 1.5], [3.2, 1.5], [6.6, 1.5],
+  [-0.2, 4.5], [3.2, 4.5], [6.6, 4.5],
 ]
 
 /* ---------- Plant ---------- */
@@ -166,18 +166,33 @@ export default function App() {
         camera={{ position: [14, 12, 14], zoom: 50 }}
       >
         <Lights night={night} />
+        <Outside night={night} />
 
-        <Box pos={[0, -0.15, 0]} size={[16, 0.3, 12]} color={C.wood} />
+        <Box pos={[0, -0.15, -3]} size={[16, 0.3, 18]} color={C.wood} />
 
         <Zone x={-5.5} z={3.5} w={5} d={5} color={C.cream} />
         <Zone x={3} z={3} w={10} d={6} color={C.woodLight} />
         <Zone x={4} z={-3.5} w={8} d={5} color={C.terra} />
         <Zone x={-4.5} z={-3.5} w={7} d={5} color={C.olive} />
+        <Zone x={-4.25} z={-9} w={7.5} d={6} color="#5A3A2A" />
+        <Zone x={3.75} z={-9} w={8.5} d={6} color="#E8D3AE" />
 
-        <Box pos={[0, 1.5, -6.1]} size={[16.4, 3, 0.2]} color={C.cream} />
-        <Box pos={[-8.1, 1.5, 0]} size={[0.2, 3, 12.2]} color={C.cream} />
-        <Box pos={[0, 0.15, -5.9]} size={[16, 0.3, 0.2]} color={C.wood} />
-        <Box pos={[-7.9, 0.15, 0]} size={[0.2, 0.3, 12]} color={C.wood} />
+        {/* Bahar ni diwalo (building have pachhal sudhi lambu) */}
+        <Box pos={[0, 1.5, -12.1]} size={[16.4, 3, 0.2]} color={C.cream} />
+        <Box pos={[-8.1, 1.5, -3]} size={[0.2, 3, 18.2]} color={C.cream} />
+        <Box pos={[0, 0.15, -11.9]} size={[16, 0.3, 0.2]} color={C.wood} />
+        <Box pos={[-7.9, 0.15, -3]} size={[0.2, 0.3, 18]} color={C.wood} />
+
+        {/* Juni pachhal ni diwal have nichi partition (camera ne pachhal na sections dekhay) */}
+        <Box pos={[-5.3, 0.6, -6.1]} size={[5.4, 1.2, 0.2]} color={C.cream} />
+        <Box pos={[-5.3, 1.24, -6.1]} size={[5.5, 0.08, 0.3]} color={C.wood} />
+        <Box pos={[3.4, 0.55, -6.1]} size={[8, 1.1, 0.2]} color={C.cream} />
+        <Box pos={[3.4, 1.14, -6.1]} size={[8.1, 0.08, 0.3]} color={C.wood} />
+        <mesh position={[3.4, 1.9, -6.1]}>
+          <boxGeometry args={[8, 1.45, 0.05]} />
+          <meshStandardMaterial color="#CFE3E6" transparent opacity={0.25} depthWrite={false} />
+        </mesh>
+        <Box pos={[3.4, 2.64, -6.1]} size={[8.1, 0.06, 0.12]} color={C.wood} />
 
         {tables.map(([x, z], i) => (
           <Table key={i} x={x} z={z} />
@@ -186,6 +201,7 @@ export default function App() {
         <Reception />
         <Kitchen />
         <Lounge />
+        <Sections night={night} />
 
         <Plant x={-7.4} z={5.5} />
         <Plant x={7.4} z={5.5} />
