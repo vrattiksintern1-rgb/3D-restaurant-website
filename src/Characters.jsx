@@ -149,8 +149,8 @@ function HairStyle({ girl, color, hat }) {
 }
 
 /* ---------- Aakhu sharir (Person ane Journey na Actor banne aa j vapre) ----------
-   r = animation mate refs: head, armL, armR, legL, legR, kneeL, kneeR, upper, legsStand, legsSit
-   leftHand = dabaa haath ma pakdeli vastu, children = upper body ma (jem ke tray) */
+   r = animation mate refs: head, armL, armR, legL, legR, kneeL, kneeR, upper, legsStand, legsSit, shinL, shinR
+   leftHand / rightHand = haath ma pakdeli vastu, children = upper body ma (jem ke tray) */
 export function Body({
   gender = 'boy',
   shirt = C.olive,
@@ -163,6 +163,7 @@ export function Body({
   phase = 0,
   r = {},
   leftHand = null,
+  rightHand = null,
   children,
 }) {
   const girl = gender === 'girl'
@@ -210,8 +211,11 @@ export function Body({
         {[-1, 1].map((s) => (
           <group key={s} position={[s * hx, 0, 0]}>
             <M geo={cap(0.066 * f, 0.26)} pos={[0, 0.06, 0.17]} rot={[Math.PI / 2, 0, 0]} color={leg} />
-            <M geo={cap(0.05 * f, 0.28)} pos={[0, -0.19, 0.38]} color={leg} />
-            <M geo={GEO.sphere} pos={[0, -0.385, 0.42]} scale={[0.046, 0.035, 0.09]} color={shoe} rough={0.5} />
+            {/* Ghutan thi niche no pag (balako bethaa bethaa pag hulave: r.shinL / r.shinR) */}
+            <group ref={s < 0 ? r.shinL : r.shinR} position={[0, 0.04, 0.38]}>
+              <M geo={cap(0.05 * f, 0.28)} pos={[0, -0.23, 0]} color={leg} />
+              <M geo={GEO.sphere} pos={[0, -0.425, 0.04]} scale={[0.046, 0.035, 0.09]} color={shoe} rough={0.5} />
+            </group>
           </group>
         ))}
         {girl && <M geo={GEO.sphere} pos={[0, 0.1, 0.14]} scale={[0.2, 0.075, 0.25]} color={shirt} />}
@@ -232,7 +236,7 @@ export function Body({
         <M geo={cyl(girl ? 0.042 : 0.048, 0.14)} pos={[0, 0.6, 0]} color={skin} rough={0.6} />
 
         {arm(-1, r.armL, leftHand)}
-        {arm(1, r.armR)}
+        {arm(1, r.armR, rightHand)}
 
         {children}
 
@@ -374,6 +378,152 @@ export function Person({
           </group>
         )}
       </Body>
+    </group>
+  )
+}
+
+/* ---------- Nanu balak: bethelu (high chair / stroller) ke ghutan-bhar chaltu ----------
+   pose = 'sit' | 'crawl', act = 'clap' | 'wave' | 'idle'
+   circle = [cx, cz, r] aapo to ghutan-bhar gol chakkar fare */
+export function Baby({
+  pos = [0, 0.1, 0],
+  rot = 0,
+  pose = 'sit',
+  act = 'idle',
+  onesie = '#9CC5D9',
+  skin = SKIN[0],
+  hair = '#5A3A22',
+  bonnet = null,
+  circle = null,
+  phase = 0,
+}) {
+  const root = useRef()
+  const body = useRef()
+  const head = useRef()
+  const armL = useRef()
+  const armR = useRef()
+  const legL = useRef()
+  const legR = useRef()
+  const st = useRef({ a: phase, k: 0 })
+  const crawl = pose === 'crawl'
+
+  useFrame((state, delta) => {
+    const dt = Math.min(delta, 0.05)
+    const t = state.clock.elapsedTime + phase * 3
+    const aL = armL.current
+    const aR = armR.current
+    const h = head.current
+
+    if (crawl) {
+      // Thodu chale, pachhi ubhu rahi aaju baju jove
+      const go = THREE.MathUtils.clamp(Math.sin(t * 0.45) * 2 + 0.8, 0, 1)
+      const s = st.current
+      s.k += go * dt * 7
+      if (circle) {
+        const [cx, cz, r] = circle
+        s.a += (go * 0.28 * dt) / r
+        root.current.position.set(cx + Math.sin(s.a) * r, pos[1], cz + Math.cos(s.a) * r)
+        root.current.rotation.y = Math.atan2(Math.cos(s.a), -Math.sin(s.a))
+      }
+      const sw = Math.sin(s.k)
+      aL.rotation.x = sw * 0.45 * go
+      aR.rotation.x = -sw * 0.45 * go
+      legL.current.rotation.x = -sw * 0.35 * go
+      legR.current.rotation.x = sw * 0.35 * go
+      body.current.position.y = Math.abs(sw) * 0.012 * go
+      body.current.rotation.z = sw * 0.05 * go
+      h.rotation.y = Math.sin(t * 0.6) * 0.45 * (1 - go)
+      h.rotation.x = -0.15 + Math.sin(t * 1.1) * 0.05
+      return
+    }
+
+    if (act === 'clap' && Math.sin(t * 0.6) > -0.3) {
+      // Taali: banne haath aagal, vachhe bhega thay
+      const a = 0.55 + Math.sin(t * 7) * 0.28
+      aL.rotation.set(-1.3, 0, a)
+      aR.rotation.set(-1.3, 0, -a)
+    } else if (act === 'wave' && Math.sin(t * 0.5) > 0) {
+      // Jamno haath upar, aavjo kare
+      aL.rotation.set(-0.3 + Math.sin(t * 1.4) * 0.1, 0, -0.15)
+      aR.rotation.set(-2.6, 0, 0.25 + Math.sin(t * 7) * 0.3)
+    } else {
+      aL.rotation.set(-0.7 + Math.sin(t * 1.4) * 0.15, 0, -0.15)
+      aR.rotation.set(-0.7 + Math.sin(t * 1.4 + 1) * 0.15, 0, 0.15)
+    }
+    // Pag halave (kick)
+    legL.current.rotation.x = Math.sin(t * 5) * 0.25
+    legR.current.rotation.x = Math.sin(t * 5 + 2) * 0.25
+    h.rotation.y = Math.sin(t * 0.7) * 0.4
+    h.rotation.x = Math.sin(t * 1.3) * 0.08
+    h.rotation.z = Math.sin(t * 0.5) * 0.1
+  })
+
+  const headTop = (
+    <group scale={0.8}>
+      <Face girl={false} skin={skin} hair={hair} phase={phase} />
+      {/* Gulabi gaal */}
+      {[-1, 1].map((s) => (
+        <M key={s} geo={GEO.ball} pos={[s * 0.08, -0.04, 0.118]} scale={[0.026, 0.018, 0.01]} color="#F2A0A0" rough={0.5} />
+      ))}
+      {bonnet ? (
+        <>
+          <M geo={GEO.hairCap} pos={[0, 0.015, -0.01]} rot={[-0.6, 0, 0]} scale={[0.98, 1.02, 1.02]} color={bonnet} rough={0.9} side={THREE.DoubleSide} />
+          <M geo={GEO.ball} pos={[0, 0.175, -0.04]} scale={[0.035, 0.035, 0.035]} color={C.white} rough={0.9} />
+        </>
+      ) : (
+        <>
+          <M geo={GEO.hairCap} pos={[0, 0.02, -0.01]} rot={[-0.8, 0, 0]} scale={[0.9, 0.95, 0.95]} color={hair} rough={0.9} side={THREE.DoubleSide} />
+          <M geo={GEO.ball} pos={[0, 0.165, 0.02]} rot={[0.4, 0, 0]} scale={[0.02, 0.035, 0.02]} color={hair} rough={0.9} />
+        </>
+      )}
+    </group>
+  )
+
+  const hand = <M geo={GEO.sphere} pos={[0, -0.115, 0]} scale={[0.03, 0.032, 0.03]} color={skin} rough={0.6} />
+
+  return (
+    <group ref={root} position={pos} rotation={[0, rot, 0]}>
+      <group ref={body}>
+        {crawl ? (
+          <>
+            <M geo={GEO.sphere} pos={[0, 0.19, 0]} scale={[0.1, 0.09, 0.15]} color={onesie} />
+            <M geo={GEO.sphere} pos={[0, 0.2, -0.12]} scale={[0.105, 0.085, 0.085]} color={onesie} />
+            <group ref={head} position={[0, 0.27, 0.17]}>{headTop}</group>
+            {[-1, 1].map((s) => (
+              <group key={s} ref={s < 0 ? armL : armR} position={[s * 0.07, 0.2, 0.1]}>
+                <M geo={cap(0.028, 0.08)} pos={[0, -0.07, 0]} color={onesie} />
+                <M geo={GEO.sphere} pos={[0, -0.17, 0.01]} scale={[0.032, 0.022, 0.04]} color={skin} rough={0.6} />
+              </group>
+            ))}
+            {[-1, 1].map((s) => (
+              <group key={s} ref={s < 0 ? legL : legR} position={[s * 0.07, 0.17, -0.13]}>
+                <M geo={cap(0.036, 0.08)} pos={[0, -0.075, 0]} color={onesie} />
+                <M geo={cap(0.032, 0.1)} pos={[0, -0.14, -0.08]} rot={[Math.PI / 2, 0, 0]} color={onesie} />
+                <M geo={GEO.sphere} pos={[0, -0.13, -0.18]} scale={[0.03, 0.03, 0.04]} color={skin} rough={0.6} />
+              </group>
+            ))}
+          </>
+        ) : (
+          <>
+            <M geo={GEO.sphere} pos={[0, 0.06, 0]} scale={[0.11, 0.065, 0.1]} color={onesie} />
+            <M geo={GEO.sphere} pos={[0, 0.155, 0]} scale={[0.105, 0.125, 0.095]} color={onesie} />
+            <group ref={head} position={[0, 0.37, 0]}>{headTop}</group>
+            {[-1, 1].map((s) => (
+              <group key={s} ref={s < 0 ? armL : armR} position={[s * 0.095, 0.23, 0]}>
+                <M geo={GEO.sphere} scale={[0.036, 0.036, 0.036]} color={onesie} />
+                <M geo={cap(0.03, 0.05)} pos={[0, -0.045, 0]} color={onesie} />
+                {hand}
+              </group>
+            ))}
+            {[-1, 1].map((s) => (
+              <group key={s} ref={s < 0 ? legL : legR} position={[s * 0.055, 0.05, 0.02]}>
+                <M geo={cap(0.038, 0.07)} pos={[0, 0, 0.06]} rot={[Math.PI / 2, 0, 0]} color={onesie} />
+                <M geo={GEO.sphere} pos={[0, 0.005, 0.14]} scale={[0.032, 0.035, 0.045]} color={skin} rough={0.6} />
+              </group>
+            ))}
+          </>
+        )}
+      </group>
     </group>
   )
 }

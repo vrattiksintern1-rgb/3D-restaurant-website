@@ -1,38 +1,11 @@
-import { createRef, useRef } from 'react'
+import { createRef, useLayoutEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { CatmullRomCurve3, Vector3 } from 'three'
-
-const C = {
-  cream: '#F5E6CC',
-  terra: '#C8553D',
-  olive: '#6B7F3A',
-  oliveDark: '#4F6128',
-  wood: '#4A3426',
-  gold: '#D9A441',
-  ink: '#2B1D14',
-  grass: '#9DAF6A',
-  asphalt: '#4A4542',
-  walk: '#D8C4A0',
-  glass: '#2F3B42',
-  tire: '#2B2523',
-}
-
-/* ---------- Layout ---------- */
-const G = -0.3               // bahar ni jamin (ground) nu top
-const ROAD_Y = -0.27         // rasto ane parking nu top
-const END = 70               // rasta na cheda (gadi aahi thi pachhi phare)
-const ROAD = [11.4, 15.4]    // restaurant ni saame no rasto (z)
-const LANE_E = 12.4          // east (+x) jati gadio
-const LANE_W = 14.4          // west (-x) jati gadio
-const WALK_N = [10.2, 11.4]  // restaurant baju ni footpath
-const WALK_F = [15.4, 16.6]  // same baju ni footpath
-const DRIVE = [14, 17]       // parking ma javano raasto (x)
-const LOT = { x0: 10, x1: 21.5, z0: -7, z1: 10.2 }
-const AISLE_X = 15.5
-const ROW_W = 12.1           // parking ni west line (gadi restaurant taraf moh rakhe)
-const ROW_E = 18.9           // parking ni east line
-const SPOT_Z = [-3.9, -1.6, 0.7, 3.0, 5.3, 7.6]
-const CROSS_X = -4.9         // porch ni saame zebra crossing
+import { CatmullRomCurve3, Object3D, Vector3 } from 'three'
+import {
+  C, G, ROAD_Y, WALK_Y, END, EDGE, ROAD, LANE_E, LANE_W, WALK_N, WALK_F, BACK, BACK_E, BACK_W, BWALK_N, BWALK_S,
+  AVE, AWALK_W, AWALK_E, DRIVE, LOT, AISLE_X, ROW_W, ROW_E, SPOT_Z, CROSS_X, AVE_CROSS, PLOT,
+  BUILDINGS, TOWER, FIELD_FENCE, FIELD_GATE, BUS_STOP, PARK_PATH, PLAZA, BENCHES, PALMS,
+} from './layout'
 
 const PARKED = [
   [ROW_W, 0, '#3E5C76'], [ROW_W, 1, C.cream], [ROW_W, 3, '#8C3B2E'], [ROW_W, 5, C.olive],
@@ -40,26 +13,62 @@ const PARKED = [
 ]
 const FREE_E = [0, 2, 3]     // east line ni khali jagya (animated gadi mate)
 
+// Avenue na kinare ubheli gadio: [x, z, rot] (left-hand: gadi potani dabi baju ubhi)
+const CURB = [[-13.3, -4, 0], [-15.5, 0.6, Math.PI], [-15.5, -8.6, Math.PI]]
+
+// Lambo patto, pan [x0, x1] gap vali jagya chhodi ne
+const spans = (a, b, gaps) => {
+  const out = []
+  let s = a
+  gaps.forEach(([g0, g1]) => {
+    if (g0 > s) out.push([s, g0])
+    s = Math.max(s, g1)
+  })
+  if (s < b) out.push([s, b])
+  return out
+}
+
 /* ---------- Trees (seed vali random, dar vakhte same jagya) ---------- */
 let seed = 7
 const rng = () => {
   seed = (seed * 16807) % 2147483647
   return (seed - 1) / 2147483646
 }
+// Building + aagal ni chhatri/footpath, local [x0, x1, z0, z1] ne world box ma
+const footBox = ({ x, z, rot }, [x0, x1, z0, z1]) => {
+  const c = Math.cos(rot)
+  const s = Math.sin(rot)
+  const pts = [[x0, z0], [x1, z0], [x0, z1], [x1, z1]].map(([lx, lz]) => [x + lx * c + lz * s, z - lx * s + lz * c])
+  const xs = pts.map((p) => p[0])
+  const zs = pts.map((p) => p[1])
+  return [Math.min(...xs), Math.max(...xs), Math.min(...zs), Math.max(...zs)]
+}
 const BLOCK = [
   [-9, 9, -13, 7],                    // restaurant
-  [-2.5, 9, 5.5, 10.2],               // garden terrace
-  [-8, -2.5, 5.5, 10.2],              // porch + walkway
+  [-8, 8, 5.5, 10.2],                 // porch + garden terrace
   [LOT.x0 - 1.2, LOT.x1, LOT.z0, LOT.z1], // parking
-  [-100, 100, WALK_N[0] - 0.4, WALK_F[1] + 0.6], // rasto + footpath
+  [-EDGE, EDGE, WALK_N[0] - 0.4, WALK_F[1] + 0.6], // rasto + footpath
+  [-EDGE, EDGE, BWALK_S[0] - 0.4, BWALK_N[1] + 0.4], // pachhal no rasto
+  [AWALK_W[0] - 0.4, AWALK_E[1] + 0.4, BWALK_N[1], WALK_N[0]], // avenue
+  [PLOT.x0, PLOT.x1, PLOT.z0, PLOT.z1], // railing vado plot
+  ...BUILDINGS.map((b) => footBox(b, [-b.w / 2 - 0.6, b.w / 2 + 0.6, -b.d - 0.6, 1.4])),
+  footBox(TOWER, [-TOWER.w / 2 - 0.6, TOWER.w / 2 + 0.6, -TOWER.d - 0.6, 1]),
+  [FIELD_FENCE.x0, FIELD_FENCE.x1, FIELD_FENCE.z0, FIELD_FENCE.z1], // medan
+  [FIELD_GATE[0], FIELD_GATE[1], WALK_F[1], FIELD_FENCE.z0],
+  [BUS_STOP[0] - 2.6, BUS_STOP[0] + 2.6, WALK_F[1], BUS_STOP[1] + 1],
+  [PARK_PATH.x0, PARK_PATH.x1, PARK_PATH.z0, PARK_PATH.z1],
+  [PLAZA.x0, PLAZA.x1, PLAZA.z0, PLAZA.z1],
+  ...BENCHES.map(([x, z]) => [x - 0.8, x + 0.8, z - 0.5, z + 0.5]),
+  ...PALMS.map(([x, z]) => [x - 0.6, x + 0.6, z - 0.6, z + 0.6]),
 ]
 const blocked = (x, z, pad) =>
   BLOCK.some(([x0, x1, z0, z1]) => x > x0 - pad && x < x1 + pad && z > z0 - pad && z < z1 + pad)
 const AREAS = [
-  [-20, 26, -21, -14, 16],   // pachhal
-  [-22, -10, -13, 9.5, 11],  // dabi baju
-  [-22, 28, 18, 26, 16],     // rasta ni same
-  [22.5, 28, -13, 9.5, 7],   // parking ni baju
+  [-34, 4, 17.2, 32, 16],    // rasta ni same, bagicho (dabi baju)
+  [23.5, 34, -13, 9.5, 8],   // parking ni baju
+  [30, 36, 17.2, 32, 4],     // medan ni jamni baju
+  [4, 34, 32.6, 37, 6],      // medan ni pachhal
+  [-16.5, -11.6, -30, -21.5, 2], // be building vachhe
 ]
 const TREES = []
 AREAS.forEach(([x0, x1, z0, z1, n]) => {
@@ -77,7 +86,7 @@ AREAS.forEach(([x0, x1, z0, z1, n]) => {
 const BUSHES = [[-9.2, 8.6], [-9.4, 4.5], [-9.3, -2], [-9.3, -8.5]]
 
 /* ---------- Nana bhagao ---------- */
-function Slab({ x0, x1, z0, z1, top, h = 0.1, color }) {
+export function Slab({ x0, x1, z0, z1, top, h = 0.1, color }) {
   return (
     <mesh position={[(x0 + x1) / 2, top - h / 2, (z0 + z1) / 2]} receiveShadow>
       <boxGeometry args={[x1 - x0, h, z1 - z0]} />
@@ -85,7 +94,7 @@ function Slab({ x0, x1, z0, z1, top, h = 0.1, color }) {
     </mesh>
   )
 }
-function Part({ pos, size, color, ...mat }) {
+export function Part({ pos, size, color, ...mat }) {
   return (
     <mesh position={pos} castShadow>
       <boxGeometry args={size} />
@@ -94,7 +103,7 @@ function Part({ pos, size, color, ...mat }) {
   )
 }
 
-function Tree({ x, z, s, kind, rot }) {
+export function Tree({ x, z, s, kind, rot }) {
   return (
     <group position={[x, G, z]} scale={s} rotation={[0, rot, 0]}>
       <mesh position={[0, kind ? 0.6 : 0.4, 0]} castShadow>
@@ -139,9 +148,9 @@ function Bush({ x, z }) {
   )
 }
 
-function Lamp({ x, z, flip = false, glow = true, night }) {
+export function Lamp({ x, z, flip = false, rot = flip ? Math.PI : 0, glow = true, night }) {
   return (
-    <group position={[x, G, z]} rotation={[0, flip ? Math.PI : 0, 0]}>
+    <group position={[x, G, z]} rotation={[0, rot, 0]}>
       <mesh position={[0, 1.5, 0]} castShadow>
         <cylinderGeometry args={[0.05, 0.08, 3, 8]} />
         <meshStandardMaterial color={C.ink} />
@@ -155,6 +164,43 @@ function Lamp({ x, z, flip = false, glow = true, night }) {
       {glow && (
         <pointLight position={[0, 2.5, 0.8]} color="#FFB35C" intensity={night ? 10 : 0} distance={9} decay={2} />
       )}
+    </group>
+  )
+}
+
+// Ek j jevi ghani box (bari, railing, patta) ek j instancedMesh ma: items = [[pos, size, rotY]]
+export function Boxes({ items, color, shadow = true, ...mat }) {
+  const ref = useRef()
+  useLayoutEffect(() => {
+    const m = ref.current
+    const o = new Object3D()
+    items.forEach(([p, size, ry = 0], i) => {
+      o.position.set(...p)
+      o.scale.set(...size)
+      o.rotation.set(0, ry, 0)
+      o.updateMatrix()
+      m.setMatrixAt(i, o.matrix)
+    })
+    m.instanceMatrix.needsUpdate = true
+    m.computeBoundingSphere()
+  }, [items])
+  return (
+    <instancedMesh ref={ref} args={[undefined, undefined, items.length]} castShadow={shadow} receiveShadow>
+      <boxGeometry />
+      <meshStandardMaterial color={color} {...mat} />
+    </instancedMesh>
+  )
+}
+
+// Bagicha ni bench (pith -z baju)
+export function Bench({ x, z, rot = 0, y = G }) {
+  return (
+    <group position={[x, y, z]} rotation={[0, rot, 0]}>
+      <Part pos={[0, 0.42, 0]} size={[1.4, 0.07, 0.42]} color={C.wood} />
+      <Part pos={[0, 0.72, -0.19]} size={[1.4, 0.28, 0.06]} color={C.wood} />
+      {[-0.6, 0.6].map((dx) => (
+        <Part key={dx} pos={[dx, 0.2, 0]} size={[0.07, 0.42, 0.4]} color={C.ink} />
+      ))}
     </group>
   )
 }
@@ -174,7 +220,7 @@ function ParkingSign({ x, z }) {
 }
 
 /* ---------- Gadi (nose +z taraf) ---------- */
-function Car({ gref, color, night = false, lights = false, pos = [0, 0, 0], rot = 0 }) {
+export function Car({ gref, color, night = false, lights = false, pos = [0, 0, 0], rot = 0 }) {
   const own = useRef()
   const root = gref || own
   const wheels = useRef([])
@@ -255,6 +301,12 @@ const TRAFFIC = [
   { x: 12, dir: 1, cruise: 4.6, color: C.gold },
   { x: 30, dir: -1, cruise: 4.8, color: '#2F6F73' },
   { x: -22, dir: -1, cruise: 5.2, color: C.cream },
+  { x: 45, dir: -1, cruise: 4.4, color: '#5B6C8F' },
+  // Pachhal no rasto
+  { x: -30, dir: 1, z: BACK_E, cruise: 4.6, color: '#E8D3AE' },
+  { x: 25, dir: 1, z: BACK_E, cruise: 5, color: '#A34A5A' },
+  { x: 8, dir: -1, z: BACK_W, cruise: 4.8, color: C.olive },
+  { x: -50, dir: -1, z: BACK_W, cruise: 4.4, color: '#3E5C76' },
 ]
 
 // Aagal gadi hoy to dhimi pado (takkar na thay)
@@ -277,7 +329,7 @@ const laneClear = (cars) =>
   )
 
 function createTraffic() {
-  const traffic = TRAFFIC.map((t) => ({ ...t, z: t.dir > 0 ? LANE_E : LANE_W, on: true }))
+  const traffic = TRAFFIC.map((t) => ({ ...t, z: t.z ?? (t.dir > 0 ? LANE_E : LANE_W), on: true }))
   const zk = SPOT_Z[FREE_E[0]]
   // Shuru ma gadi parking ma ubhi hoy
   const parker = {
@@ -322,7 +374,7 @@ function Traffic({ night }) {
 
     if (pk.phase === 'wait') {
       pk.timer -= dt
-      const spawnFree = !traffic.some((o) => o.dir > 0 && o.x < -END + 12)
+      const spawnFree = !traffic.some((o) => o.z === LANE_E && o.x < -END + 12)
       if (pk.timer <= 0 && spawnFree) {
         pk.zk = SPOT_Z[FREE_E[Math.floor(Math.random() * FREE_E.length)]]
         pk.on = true
@@ -393,37 +445,91 @@ function Traffic({ night }) {
 }
 
 /* ---------- Main ---------- */
+// Navi street lamps: [x, z, rot] (fakt emissive bulb, pointLight nahi)
+const STREET_LAMPS = [
+  ...[-8, 4, 16].map((x) => [x, BWALK_N[1] - 0.1, Math.PI]),
+  ...[-12, -4, 4, 14].map((x) => [x, BWALK_S[0] + 0.1, 0]),
+  ...[-6, 3].map((z) => [AWALK_E[1] - 0.1, z, -Math.PI / 2]),
+  ...[-6.3, 1.9].map((z) => [AWALK_W[0] + 0.1, z, Math.PI / 2]),
+]
+
+// Zebra na patta: rasta ni aarpar (along = 'z' etle patta z disha ma lamba)
+function Zebra({ c, from, to, along }) {
+  const top = ROAD_Y + 0.015
+  return [-1.5, -0.75, 0, 0.75, 1.5].map((d) =>
+    along === 'z' ? (
+      <Slab key={d} x0={c + d - 0.21} x1={c + d + 0.21} z0={from} z1={to} top={top} h={0.02} color={C.cream} />
+    ) : (
+      <Slab key={d} x0={from} x1={to} z0={c + d - 0.21} z1={c + d + 0.21} top={top} h={0.02} color={C.cream} />
+    )
+  )
+}
+
 export default function Outside({ night }) {
   const dashes = []
   for (let x = -END - 28; x <= END + 28; x += 4) {
-    if (Math.abs(x - CROSS_X) > 2.6) dashes.push(x)
+    if (Math.abs(x - CROSS_X) > 2.6 && (x < AVE[0] - 1 || x > AVE[1] + 1)) dashes.push(x)
+  }
+  const aveDashes = []
+  for (let z = BWALK_N[1] + 1; z <= WALK_N[0] - 1; z += 4) {
+    if (AVE_CROSS.every((c) => Math.abs(z - c) > 2.6)) aveDashes.push(z)
   }
   const top = ROAD_Y + 0.01
+  const aveGap = [[AVE[0], AVE[1]]]
+  const aveMid = (AVE[0] + AVE[1]) / 2
 
   return (
     <group>
       {/* Ghaas */}
-      <Slab x0={-100} x1={100} z0={-100} z1={100} top={G} h={0.2} color={C.grass} />
+      <Slab x0={-EDGE} x1={EDGE} z0={-EDGE} z1={EDGE} top={G} h={0.2} color={C.grass} />
 
-      {/* Rasto */}
-      <Slab x0={-100} x1={100} z0={ROAD[0]} z1={ROAD[1]} top={ROAD_Y} color={C.asphalt} />
+      {/* Aagal no rasto */}
+      <Slab x0={-EDGE} x1={EDGE} z0={ROAD[0]} z1={ROAD[1]} top={ROAD_Y} color={C.asphalt} />
       {dashes.map((x) => (
         <Slab key={x} x0={x - 0.8} x1={x + 0.8} z0={13.34} z1={13.46} top={top} h={0.02} color={C.cream} />
       ))}
-      <Slab x0={-100} x1={100} z0={11.55} z1={11.65} top={top} h={0.02} color={C.cream} />
-      <Slab x0={-100} x1={100} z0={15.15} z1={15.25} top={top} h={0.02} color={C.cream} />
-      {[-1.5, -0.75, 0, 0.75, 1.5].map((dx) => (
-        <Slab
-          key={dx} x0={CROSS_X + dx - 0.21} x1={CROSS_X + dx + 0.21}
-          z0={11.7} z1={15.1} top={top + 0.005} h={0.02} color={C.cream}
-        />
+      {spans(-EDGE, EDGE, aveGap).map(([x0, x1]) => (
+        <Slab key={x0} x0={x0} x1={x1} z0={11.55} z1={11.65} top={top} h={0.02} color={C.cream} />
+      ))}
+      <Slab x0={-EDGE} x1={EDGE} z0={15.15} z1={15.25} top={top} h={0.02} color={C.cream} />
+      <Zebra c={CROSS_X} from={11.7} to={15.1} along="z" />
+
+      {/* Pachhal no rasto */}
+      <Slab x0={-EDGE} x1={EDGE} z0={BACK[0]} z1={BACK[1]} top={ROAD_Y} color={C.asphalt} />
+      {dashes.map((x) => (
+        <Slab key={x} x0={x - 0.8} x1={x + 0.8} z0={-17.66} z1={-17.54} top={top} h={0.02} color={C.cream} />
+      ))}
+      {spans(-EDGE, EDGE, aveGap).map(([x0, x1]) => (
+        <Slab key={x0} x0={x0} x1={x1} z0={-15.85} z1={-15.75} top={top} h={0.02} color={C.cream} />
+      ))}
+      <Slab x0={-EDGE} x1={EDGE} z0={-19.45} z1={-19.35} top={top} h={0.02} color={C.cream} />
+      <Zebra c={CROSS_X} from={-19.3} to={-15.9} along="z" />
+
+      {/* Avenue (banne rasta ne jode) */}
+      <Slab x0={AVE[0]} x1={AVE[1]} z0={BACK[1]} z1={ROAD[0]} top={ROAD_Y} color={C.asphalt} />
+      {aveDashes.map((z) => (
+        <Slab key={z} x0={aveMid - 0.06} x1={aveMid + 0.06} z0={z - 0.8} z1={z + 0.8} top={top} h={0.02} color={C.cream} />
+      ))}
+      {AVE_CROSS.map((c) => (
+        <Zebra key={c} c={c} from={AVE[0] + 0.1} to={AVE[1] - 0.1} along="x" />
+      ))}
+      {CURB.map(([x, z, rot]) => (
+        <Car key={z} pos={[x, ROAD_Y, z]} rot={rot} color={z > 0 ? C.gold : z > -5 ? '#2F6F73' : C.cream} />
       ))}
 
       {/* Footpath + porch sudhi no raasto */}
-      <Slab x0={-100} x1={DRIVE[0]} z0={WALK_N[0]} z1={WALK_N[1]} top={-0.2} h={0.15} color={C.walk} />
-      <Slab x0={DRIVE[1]} x1={100} z0={WALK_N[0]} z1={WALK_N[1]} top={-0.2} h={0.15} color={C.walk} />
-      <Slab x0={-100} x1={100} z0={WALK_F[0]} z1={WALK_F[1]} top={-0.2} h={0.15} color={C.walk} />
-      <Slab x0={-6.4} x1={-3.6} z0={9.3} z1={WALK_N[0]} top={-0.2} h={0.15} color={C.walk} />
+      {spans(-EDGE, EDGE, [aveGap[0], DRIVE]).map(([x0, x1]) => (
+        <Slab key={x0} x0={x0} x1={x1} z0={WALK_N[0]} z1={WALK_N[1]} top={WALK_Y} h={0.15} color={C.walk} />
+      ))}
+      <Slab x0={-EDGE} x1={EDGE} z0={WALK_F[0]} z1={WALK_F[1]} top={WALK_Y} h={0.15} color={C.walk} />
+      {spans(-EDGE, EDGE, aveGap).map(([x0, x1]) => (
+        <Slab key={x0} x0={x0} x1={x1} z0={BWALK_N[0]} z1={BWALK_N[1]} top={WALK_Y} h={0.15} color={C.walk} />
+      ))}
+      <Slab x0={-EDGE} x1={EDGE} z0={BWALK_S[0]} z1={BWALK_S[1]} top={WALK_Y} h={0.15} color={C.walk} />
+      {[AWALK_W, AWALK_E].map(([x0, x1]) => (
+        <Slab key={x0} x0={x0} x1={x1} z0={BWALK_N[1]} z1={WALK_N[0]} top={WALK_Y} h={0.15} color={C.walk} />
+      ))}
+      <Slab x0={-6.4} x1={-3.6} z0={9.9} z1={WALK_N[0]} top={WALK_Y} h={0.15} color={C.walk} />
 
       {/* Parking */}
       <Slab x0={LOT.x0} x1={LOT.x1} z0={LOT.z0} z1={LOT.z1} top={ROAD_Y} color={C.asphalt} />
@@ -456,11 +562,15 @@ export default function Outside({ night }) {
         <Bush key={x + '_' + z} x={x} z={z} />
       ))}
 
-      {[-14, -1, 8, 23].map((x) => (
-        <Lamp key={'n' + x} x={x} z={10.6} night={night} />
+      {/* Lamp footpath na bahar na kinare (chalta loko vachhe na aave) */}
+      {[-19, -1, 8, 23].map((x) => (
+        <Lamp key={'n' + x} x={x} z={WALK_N[0] + 0.1} night={night} />
       ))}
       {[-8, 6, 20].map((x) => (
-        <Lamp key={'f' + x} x={x} z={16.2} flip glow={false} night={night} />
+        <Lamp key={'f' + x} x={x} z={WALK_F[1] - 0.1} flip glow={false} night={night} />
+      ))}
+      {STREET_LAMPS.map(([x, z, rot]) => (
+        <Lamp key={x + '_' + z} x={x} z={z} rot={rot} glow={false} night={night} />
       ))}
     </group>
   )

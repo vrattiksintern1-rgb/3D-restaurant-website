@@ -1,91 +1,54 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { Logo } from './icons'
+import { reducedMotion } from './ui'
 
-export default function Intro() {
-  const [fade, setFade] = useState(false)
-  const [gone, setGone] = useState(false)
+const MIN_SHOW = 1500 // ms: loader kyarey flash jevu na lage
+
+// Loading screen. Progress follows real signals (fonts + first rendered frames);
+// the bar creeps towards 90% meanwhile so it never looks stuck.
+export default function Intro({ sceneReady, onReveal }) {
+  const bar = useRef()
+  const [stage, setStage] = useState('loading') // loading -> leaving -> gone
+  const done = useRef(false)
 
   useEffect(() => {
-    const t1 = setTimeout(() => setFade(true), 2600)
-    const t2 = setTimeout(() => setGone(true), 3600)
-    return () => {
-      clearTimeout(t1)
-      clearTimeout(t2)
+    let fonts = !document.fonts
+    document.fonts?.ready.then(() => (fonts = true))
+    const t0 = performance.now()
+    let p = 0
+    let raf
+    const tick = (now) => {
+      const ready = fonts && sceneReady.current
+      const target = ready && now - t0 > MIN_SHOW ? 1 : Math.min(0.9, (now - t0) / 2200)
+      p += (target - p) * 0.08
+      if (bar.current) bar.current.style.transform = `scaleX(${p})`
+      if (target === 1 && p > 0.995 && !done.current) {
+        done.current = true
+        setStage('leaving')
+        onReveal()
+        setTimeout(() => setStage('gone'), reducedMotion() ? 300 : 1000)
+        return
+      }
+      raf = requestAnimationFrame(tick)
     }
-  }, [])
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [sceneReady, onReveal])
 
-  if (gone) return null
+  if (stage === 'gone') return null
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: '#4A3426',
-        color: '#F5E6CC',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 100,
-        fontFamily: 'Georgia, serif',
-        opacity: fade ? 0 : 1,
-        transition: 'opacity 1s ease',
-        pointerEvents: fade ? 'none' : 'auto',
-      }}
-    >
-      <style>{`
-        @keyframes fillbar { from { width: 0 } to { width: 100% } }
-        @keyframes rise { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
-      `}</style>
-
-      <div
-        style={{
-          fontSize: 13,
-          letterSpacing: 6,
-          color: '#C8553D',
-          animation: 'rise 0.9s ease both',
-        }}
-      >
-        WELCOME TO
-      </div>
-      <div
-        style={{
-          fontSize: 56,
-          fontWeight: 700,
-          margin: '8px 0 6px',
-          animation: 'rise 0.9s ease 0.3s both',
-        }}
-      >
-        The Food House
-      </div>
-      <div
-        style={{
-          fontSize: 17,
-          fontStyle: 'italic',
-          color: '#D9C3A0',
-          animation: 'rise 0.9s ease 0.6s both',
-        }}
-      >
-        Fire. Spice. Slow evenings.
-      </div>
-
-      <div
-        style={{
-          marginTop: 40,
-          width: 220,
-          height: 3,
-          background: 'rgba(245, 230, 204, 0.2)',
-          borderRadius: 2,
-          overflow: 'hidden',
-        }}
-      >
-        <div
-          style={{
-            height: '100%',
-            background: '#C8553D',
-            animation: 'fillbar 2.5s ease-in-out forwards',
-          }}
-        />
+    <div className={`loader${stage === 'leaving' ? ' is-leaving' : ''}`} role="status" aria-label="Loading The Food House">
+      <div className="loader-inner">
+        <span className="loader-logo">
+          <Logo size={64} />
+        </span>
+        <div className="eyebrow eyebrow--light">Welcome to</div>
+        <div className="loader-title">The Food House</div>
+        <div className="loader-tag">Fire. Spice. Slow evenings.</div>
+        <div className="loader-track">
+          <span ref={bar} />
+        </div>
       </div>
     </div>
   )

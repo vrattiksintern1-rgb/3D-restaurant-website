@@ -1,7 +1,8 @@
-const pendants = [
-  [-0.2, 1.5], [3.2, 1.5], [6.6, 1.5],
-  [-0.2, 4.5], [3.2, 4.5], [6.6, 4.5],
-]
+import { Icon } from './icons'
+import { DINING_HALL } from './Journey'
+
+// Dining hall table upar na pendant (Journey.jsx na DINING_HALL.tables[].lamps)
+const pendants = DINING_HALL.tables.flatMap((t) => t.lamps)
 
 function Pendant({ x, z, night }) {
   return (
@@ -41,25 +42,32 @@ function Glow({ pos, night }) {
   )
 }
 
+// Ghaas jevo j rang: kyarey scene ni pachhal no bhaag dekhay to pan alag na pade
+export const BACKDROP = { day: '#707945', night: '#3A3C26' }
+
 export default function Lights({ night }) {
   return (
     <>
-      <color attach="background" args={[night ? '#1B1410' : '#F5E6CC']} />
+      <color attach="background" args={[night ? BACKDROP.night : BACKDROP.day]} />
 
       <ambientLight
         intensity={night ? 0.3 : 0.7}
         color={night ? '#FFD9A8' : '#FFFFFF'}
       />
       <directionalLight
-        position={[8, 14, 6]}
+        position={[24, 42, 18]}
         intensity={night ? 0.35 : 1}
         color={night ? '#9FB4FF' : '#FFF1DC'}
         castShadow
         shadow-mapSize={[4096, 4096]}
-        shadow-camera-left={-30}
-        shadow-camera-right={30}
-        shadow-camera-top={30}
-        shadow-camera-bottom={-30}
+        shadow-camera-left={-48}
+        shadow-camera-right={48}
+        shadow-camera-top={48}
+        shadow-camera-bottom={-48}
+        shadow-camera-far={150}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.03}
+        shadow-radius={5}
       />
 
       {pendants.map(([x, z], i) => (
@@ -76,27 +84,19 @@ export default function Lights({ night }) {
   )
 }
 
-export function NightToggle({ night, setNight }) {
+export function NightToggle({ night, onToggle, compact }) {
   return (
     <button
-      onClick={() => setNight(!night)}
-      style={{
-        position: 'fixed',
-        top: 24,
-        right: 24,
-        padding: '11px 20px',
-        borderRadius: 999,
-        border: '1px solid #4A3426',
-        background: night ? '#F5E6CC' : '#4A3426',
-        color: night ? '#4A3426' : '#F5E6CC',
-        fontFamily: 'Georgia, serif',
-        fontSize: 14,
-        cursor: 'pointer',
-        zIndex: 10,
-        boxShadow: '0 8px 20px rgba(0, 0, 0, 0.25)',
-      }}
+      className={`night-toggle glass${night ? ' is-night' : ''}`}
+      onClick={onToggle}
+      aria-pressed={night}
+      aria-label={night ? 'Switch to day mode' : 'Switch to night mode'}
     >
-      {night ? 'Day mode' : 'Night mode'}
+      <span className="night-icons" aria-hidden="true">
+        <Icon.sun />
+        <Icon.moon />
+      </span>
+      {!compact && <span>{night ? 'Day mode' : 'Night mode'}</span>}
     </button>
   )
 }

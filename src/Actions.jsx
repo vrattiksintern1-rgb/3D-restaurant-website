@@ -1,176 +1,137 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Icon } from './icons'
+import { waLink } from './ui'
 
-// Tamaro WhatsApp number: 91 + 10 digit, space ke + vagar
-const PHONE = '919999999999'
+const ORDER_TEXT = "Hi, I'd like to order from The Food House"
 
-const pill = {
-  padding: '13px 24px',
-  borderRadius: 999,
-  fontFamily: 'Georgia, serif',
-  fontSize: 15,
-  cursor: 'pointer',
-  border: '1px solid #4A3426',
-  boxShadow: '0 8px 20px rgba(74, 52, 38, 0.25)',
+const today = () => {
+  const d = new Date()
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+  return d.toISOString().slice(0, 10)
 }
 
-const field = {
-  width: '100%',
-  boxSizing: 'border-box',
-  padding: '10px 12px',
-  marginBottom: 12,
-  borderRadius: 8,
-  border: '1px solid #4A3426',
-  background: '#FFF8EC',
-  color: '#4A3426',
-  fontFamily: 'Georgia, serif',
-  fontSize: 15,
+const niceDate = (iso) =>
+  new Date(iso + 'T00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+
+const niceTime = (hhmm) => {
+  const [h, m] = hhmm.split(':').map(Number)
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`
 }
 
 export default function Actions() {
   const [open, setOpen] = useState(false)
-  const [name, setName] = useState('')
-  const [guests, setGuests] = useState(2)
-  const [date, setDate] = useState('')
-  const [time, setTime] = useState('20:00')
-
-  const link = (text) =>
-    'https://wa.me/' + PHONE + '?text=' + encodeURIComponent(text)
-
-  const sendBooking = () => {
-    const msg =
-      'Hello The Food House! I would like to book a table.\n' +
-      'Name: ' + (name || '-') + '\n' +
-      'Guests: ' + guests + '\n' +
-      'Date: ' + (date || '-') + '\n' +
-      'Time: ' + time
-    window.open(link(msg), '_blank')
-    setOpen(false)
-  }
-
-  const order = () => {
-    window.open(
-      link('Hello The Food House! I would like to place an order.'),
-      '_blank'
-    )
-  }
+  const closeModal = useCallback(() => setOpen(false), [])
 
   return (
     <>
-      {/* Neeche na 2 buttons */}
-      <div
-        style={{
-          position: 'fixed',
-          bottom: 28,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          gap: 14,
-          zIndex: 10,
-        }}
-      >
-        <button
-          onClick={() => setOpen(true)}
-          style={{ ...pill, background: '#C8553D', color: '#F5E6CC' }}
-        >
-          Book a Table
-        </button>
-        <button
-          onClick={order}
-          style={{ ...pill, background: '#6B7F3A', color: '#F5E6CC' }}
-        >
-          Order on WhatsApp
-        </button>
-      </div>
-
-      {/* Booking form */}
-      {open && (
-        <div
-          onClick={() => setOpen(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(43, 29, 20, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 20,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: 340,
-              background: '#F5E6CC',
-              border: '1px solid #4A3426',
-              borderRadius: 18,
-              padding: 24,
-              fontFamily: 'Georgia, serif',
-              color: '#4A3426',
-              boxShadow: '0 20px 50px rgba(0, 0, 0, 0.35)',
-            }}
-          >
-            <div style={{ fontSize: 12, letterSpacing: 3, color: '#C8553D' }}>
-              RESERVATION
-            </div>
-            <div style={{ fontSize: 26, fontWeight: 700, margin: '4px 0 18px' }}>
-              Book a Table
-            </div>
-
-            <input
-              style={field}
-              placeholder="Your name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            <input
-              style={field}
-              type="number"
-              min="1"
-              max="20"
-              value={guests}
-              onChange={(e) => setGuests(e.target.value)}
-            />
-            <input
-              style={field}
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-            <input
-              style={field}
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-            />
-
-            <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-              <button
-                onClick={sendBooking}
-                style={{
-                  ...pill,
-                  flex: 1,
-                  background: '#C8553D',
-                  color: '#F5E6CC',
-                  boxShadow: 'none',
-                }}
-              >
-                Send on WhatsApp
-              </button>
-              <button
-                onClick={() => setOpen(false)}
-                style={{
-                  ...pill,
-                  background: 'transparent',
-                  color: '#4A3426',
-                  boxShadow: 'none',
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+      <div className="cta-dock">
+        <div className="cta reveal" style={{ '--i': 2 }}>
+          <button className="btn-cta btn-cta--primary" onClick={() => setOpen(true)}>
+            <Icon.calendar size={17} />
+            Book a Table
+          </button>
+          <a className="btn-cta btn-cta--whatsapp" href={waLink(ORDER_TEXT)} target="_blank" rel="noopener noreferrer">
+            <Icon.whatsapp size={17} />
+            Order on WhatsApp
+          </a>
         </div>
-      )}
+      </div>
+      {open && <BookingModal onClose={closeModal} />}
     </>
+  )
+}
+
+function BookingModal({ onClose }) {
+  const [f, setF] = useState({ name: '', phone: '', date: today(), time: '20:00', guests: '2' })
+  const [closing, setClosing] = useState(false)
+  const first = useRef()
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
+
+  const close = useCallback(() => {
+    setClosing(true)
+    setTimeout(onClose, 220)
+  }, [onClose])
+
+  useEffect(() => {
+    first.current?.focus()
+    const onKey = (e) => e.key === 'Escape' && close()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [close])
+
+  const submit = (e) => {
+    e.preventDefault()
+    const msg = [
+      "Hi The Food House! I'd like to book a table.",
+      '',
+      `• Name: ${f.name.trim()}`,
+      `• Phone: ${f.phone.trim()}`,
+      `• Date: ${niceDate(f.date)}`,
+      `• Time: ${niceTime(f.time)}`,
+      `• Guests: ${f.guests}`,
+    ].join('\n')
+    window.open(waLink(msg), '_blank', 'noopener')
+    close()
+  }
+
+  return (
+    <div className={`modal-backdrop${closing ? ' is-closing' : ''}`} onClick={close}>
+      <form
+        className="modal"
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={submit}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="book-title"
+      >
+        <button type="button" className="icon-btn icon-btn--ghost modal-close" onClick={close} aria-label="Close">
+          <Icon.close size={16} />
+        </button>
+        <div className="eyebrow">Reservation</div>
+        <h2 id="book-title" className="modal-title">Book a Table</h2>
+        <p className="modal-sub">We'll confirm on WhatsApp within minutes.</p>
+
+        <label className="field">
+          <span>Name</span>
+          <input ref={first} required autoComplete="name" placeholder="Your name" value={f.name} onChange={set('name')} />
+        </label>
+        <label className="field">
+          <span>Phone</span>
+          <input
+            required
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            pattern="[0-9+\s\-]{7,}"
+            placeholder="+91 98765 43210"
+            value={f.phone}
+            onChange={set('phone')}
+          />
+        </label>
+        <div className="field-row">
+          <label className="field">
+            <span>Date</span>
+            <input required type="date" min={today()} value={f.date} onChange={set('date')} />
+          </label>
+          <label className="field">
+            <span>Time</span>
+            <input required type="time" value={f.time} onChange={set('time')} />
+          </label>
+          <label className="field field--narrow">
+            <span>Guests</span>
+            <select value={f.guests} onChange={set('guests')}>
+              {Array.from({ length: 12 }, (_, i) => (
+                <option key={i}>{i + 1}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <button type="submit" className="btn-cta btn-cta--whatsapp modal-submit">
+          <Icon.whatsapp size={17} />
+          Send on WhatsApp
+        </button>
+      </form>
+    </div>
   )
 }

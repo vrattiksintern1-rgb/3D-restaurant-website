@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
+import Dish from './Dishes'
 
 const C = {
   cream: '#F5E6CC',
@@ -103,44 +104,6 @@ function Burner({ pos }) {
   )
 }
 
-/* ---------- Plate (3 prakar na) ---------- */
-function Plate({ pos, kind = 0 }) {
-  return (
-    <group position={pos}>
-      <Cyl pos={[0, 0, 0]} r={0.17} h={0.03} color={C.plate} seg={20} />
-
-      {kind === 0 && (
-        <>
-          {/* rice + curry */}
-          <Ball pos={[-0.04, 0.04, 0]} r={0.09} color="#EFE0BF" scale={[1, 0.55, 1]} />
-          <Cyl pos={[0.07, 0.035, 0.02]} r={0.07} h={0.04} color={C.terra} />
-          <Ball pos={[0.07, 0.065, 0.02]} r={0.025} color={C.oliveDark} />
-        </>
-      )}
-
-      {kind === 1 && (
-        <>
-          {/* salad */}
-          <Ball pos={[-0.06, 0.05, 0.03]} r={0.06} color={C.olive} />
-          <Ball pos={[0.05, 0.05, -0.04]} r={0.06} color={C.oliveDark} />
-          <Ball pos={[0.04, 0.06, 0.07]} r={0.045} color={C.terra} />
-          <Ball pos={[-0.03, 0.07, -0.06]} r={0.04} color={C.gold} />
-        </>
-      )}
-
-      {kind === 2 && (
-        <>
-          {/* roti + sabji */}
-          <Cyl pos={[-0.03, 0.03, 0]} r={0.12} h={0.02} color={C.gold} />
-          <Cyl pos={[-0.03, 0.05, 0]} r={0.12} h={0.02} color="#C9902E" />
-          <Cyl pos={[-0.03, 0.07, 0]} r={0.12} h={0.02} color={C.gold} />
-          <Cyl pos={[0.1, 0.04, 0.06]} r={0.05} h={0.05} color={C.terra} />
-        </>
-      )}
-    </group>
-  )
-}
-
 /* ---------- Juice no glass ---------- */
 function Glass({ pos }) {
   return (
@@ -221,7 +184,7 @@ function DiningFood() {
         const c = Math.cos(g.a)
         return (
           <group key={'p' + i}>
-            <Plate pos={[tx + s * 0.42, topY, tz + c * 0.42]} kind={i % 3} />
+            <Dish pos={[tx + s * 0.42, topY, tz + c * 0.42]} kind={i} />
             <Glass pos={[tx + s * 0.5 + c * 0.22, topY, tz + c * 0.5 - s * 0.22]} />
           </group>
         )
@@ -273,10 +236,10 @@ function KitchenFood() {
       </group>
 
       {/* Pickup counter: taiyar plates */}
-      <Plate pos={[2.8, 1.15, -0.5]} kind={0} />
-      <Plate pos={[3.8, 1.15, -0.5]} kind={1} />
-      <Plate pos={[4.8, 1.15, -0.5]} kind={2} />
-      <Plate pos={[5.8, 1.15, -0.5]} kind={0} />
+      <Dish pos={[2.8, 1.15, -0.5]} kind={12} />
+      <Dish pos={[3.8, 1.15, -0.5]} kind={13} />
+      <Dish pos={[4.8, 1.15, -0.5]} kind={14} />
+      <Dish pos={[5.8, 1.15, -0.5]} kind={4} />
       <Steam pos={[2.8, 1.25, -0.5]} count={2} size={0.06} rise={0.5} />
       <Steam pos={[4.8, 1.25, -0.5]} count={2} size={0.06} rise={0.5} />
 

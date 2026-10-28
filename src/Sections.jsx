@@ -1,4 +1,6 @@
 import { Person } from './Characters'
+import Dish from './Dishes'
+import PrivateDiningStory from './PrivateDiningStory'
 
 const C = {
   cream: '#F5E6CC',
@@ -47,17 +49,6 @@ function Drink({ pos, color = '#E39A3B' }) {
     </group>
   )
 }
-function Plate({ pos }) {
-  return (
-    <group position={pos}>
-      <Cyl pos={[0, 0.015, 0]} r={0.17} h={0.03} color={C.plate} seg={18} />
-      <mesh position={[0, 0.05, 0]} scale={[1, 0.5, 1]}>
-        <sphereGeometry args={[0.08, 10, 10]} />
-        <meshStandardMaterial color={C.terra} />
-      </mesh>
-    </group>
-  )
-}
 function Pot({ pos, s = 1 }) {
   return (
     <group position={pos} scale={s}>
@@ -84,16 +75,6 @@ function Chair({ x, z, rot, y = 0.1, color = C.terra }) {
     </group>
   )
 }
-// Ucho stool (bar mate)
-function Stool({ x, z }) {
-  return (
-    <group position={[x, 0.1, z]}>
-      <Cyl pos={[0, 0.02, 0]} r={0.18} h={0.04} color={C.ink} />
-      <Cyl pos={[0, 0.4, 0]} r={0.04} h={0.76} color={C.gold} seg={8} />
-      <Cyl pos={[0, 0.78, 0]} r={0.22} h={0.08} color={C.terra} />
-    </group>
-  )
-}
 // Bethelo manas (seat top = y)
 function Guest({ x, y, z, rot, i, mode = 'sit' }) {
   const shirts = ['#3E5C76', '#8C3B2E', '#D9A441', '#5C6B3A', '#7A4E7E', '#2F6F73', '#B5651D', '#A34A5A']
@@ -108,7 +89,6 @@ function Guest({ x, y, z, rot, i, mode = 'sit' }) {
 }
 
 /* ---------- Bar ---------- */
-const STOOLS = [-6.4, -5.2, -4.0, -2.8]
 const HIGH_TABLES = [-6.3, -3.3]
 
 function Bar({ night }) {
@@ -119,19 +99,7 @@ function Bar({ night }) {
       <Part pos={[-4.3, 1.04, -9.45]} size={[5.8, 0.08, 0.9]} color={C.cream} />
       <Part pos={[-4.3, 0.85, -9.14]} size={[5.6, 0.06, 0.02]} color={C.gold} />
       <Part pos={[-4.3, 0.28, -9.0]} size={[5.6, 0.05, 0.05]} color={C.gold} />
-      {STOOLS.map((x) => (
-        <Stool key={x} x={x} z={-8.55} />
-      ))}
-      {[[-6.4, '#8C3B2E'], [-5.2, '#E39A3B'], [-2.8, C.olive]].map(([x, col]) => (
-        <Drink key={x} pos={[x, 1.08, -9.3]} color={col} />
-      ))}
-      <Guest x={-6.4} y={0.92} z={-8.55} rot={Math.PI} i={0} />
-      <Guest x={-5.2} y={0.92} z={-8.55} rot={Math.PI} i={1} mode="talk" />
-      <Guest x={-2.8} y={0.92} z={-8.55} rot={Math.PI} i={2} />
-
-      {/* Bartender */}
-      <Person pos={[-4.3, 0.1, -10.3]} rot={0} shirt={C.ink} apron={C.terra} skin={SKIN[2]} mode="work" phase={0.4} />
-      <Part pos={[-3.7, 1.15, -9.6]} size={[0.12, 0.2, 0.12]} color="#B8B8B8" />
+      {/* Stools, customers, drinks ane bartender have BarStory.jsx ma chhe (badha badlata rahe) */}
 
       {/* Pachhal ni bottle shelf */}
       <Part pos={[-4.3, 0.55, -11.7]} size={[6, 0.9, 0.55]} color={C.wood} />
@@ -162,14 +130,8 @@ function Bar({ night }) {
         <group key={x}>
           <Cyl pos={[x, 0.55, -7.1]} r={0.06} h={0.9} color={C.ink} seg={8} />
           <Cyl pos={[x, 1.02, -7.1]} r={0.42} h={0.05} color={C.cream} seg={20} />
-          <Stool x={x - 0.6} z={-7.1} />
-          <Stool x={x + 0.6} z={-7.1} />
         </group>
       ))}
-      <Guest x={-6.9} y={0.92} z={-7.1} rot={Math.PI / 2} i={3} mode="talk" />
-      <Guest x={-5.7} y={0.92} z={-7.1} rot={-Math.PI / 2} i={4} />
-      <Drink pos={[-6.45, 1.045, -7.05]} color="#8C3B2E" />
-      <Drink pos={[-6.15, 1.045, -7.15]} color="#E39A3B" />
 
       {/* Bar ane private dining vachhe lakda ni jali */}
       {Array.from({ length: 12 }, (_, k) => (
@@ -182,12 +144,6 @@ function Bar({ night }) {
 
 /* ---------- Private dining ---------- */
 const PD = [3.8, -9]  // lambu table nu center
-const PD_SEATS = [
-  [2.2, -8.05, Math.PI], [3.8, -8.05, Math.PI], [5.4, -8.05, Math.PI],
-  [2.2, -9.95, 0], [3.8, -9.95, 0], [5.4, -9.95, 0],
-  [1.05, -9, Math.PI / 2], [6.55, -9, -Math.PI / 2],
-]
-const PD_TAKEN = [0, 1, 3, 4, 5, 6]
 
 function PrivateDining({ night }) {
   const [tx, tz] = PD
@@ -200,21 +156,8 @@ function PrivateDining({ night }) {
         <Part key={dx + '_' + dz} pos={[tx + dx, 0.47, tz + dz]} size={[0.1, 0.74, 0.1]} color={C.wood} />
       ))}
 
-      {PD_SEATS.map(([x, z, rot], i) => (
-        <Chair key={i} x={x} z={z} rot={rot} color={C.woodLight} />
-      ))}
-      {PD_TAKEN.map((k, n) => {
-        const [x, z, rot] = PD_SEATS[k]
-        const fx = Math.sin(rot)
-        const fz = Math.cos(rot)
-        return (
-          <group key={k}>
-            <Guest x={x} y={0.54} z={z} rot={rot} i={n + 5} mode={n % 3 === 1 ? 'talk' : 'sit'} />
-            <Plate pos={[x + fx * 0.55, 0.89, z + fz * 0.55]} />
-            <Drink pos={[x + fx * 0.6 + fz * 0.25, 0.89, z + fz * 0.6 - fx * 0.25]} color="#8C3B2E" />
-          </group>
-        )
-      })}
+      {/* Khurshi, high chair, mehmano, waiter, plates ane paani na glass have PrivateDiningStory.jsx ma chhe */}
+      <PrivateDiningStory night={night} />
 
       {/* Minbatti */}
       {[-1.2, 0, 1.2].map((dx) => (
@@ -250,9 +193,6 @@ function PrivateDining({ night }) {
         </group>
       ))}
 
-      {/* Waiter (seva mate taiyar) */}
-      <Person pos={[7.2, 0.1, -7.1]} rot={-2.3} gender="girl" shirt={C.olive} apron={C.cream} skin={SKIN[0]} tray phase={1.1} />
-
       <Pot pos={[0.1, 0.1, -11.5]} />
       <Pot pos={[7.5, 0.1, -11.5]} />
     </group>
@@ -260,7 +200,7 @@ function PrivateDining({ night }) {
 }
 
 /* ---------- Garden terrace (bahar) ---------- */
-const DECK = { x0: -2.2, x1: 8.6, z0: 6.2, z1: 9.9, top: -0.08 }
+const DECK = { x0: -2.6, x1: 8, z0: 6, z1: 9.9, top: -0.08 }
 const T_TABLES = [0.3, 3.4, 6.5]
 const T_Z = 8.0
 
@@ -295,7 +235,7 @@ function Terrace({ night }) {
       ))}
 
       {/* Aagal ni kundio (planters) */}
-      {[-1.0, 2.0, 4.6, 7.4].map((x) => (
+      {[-1.4, 1.5, 4.4, 7.1].map((x) => (
         <group key={x} position={[x, top, 9.55]}>
           <Part pos={[0, 0.22, 0]} size={[1.6, 0.44, 0.4]} color={C.terra} />
           {[-0.45, 0, 0.45].map((dx) => (
@@ -323,8 +263,8 @@ function Terrace({ night }) {
           <group key={t}>
             <Guest x={x - 0.95} y={y} z={T_Z} rot={Math.PI / 2} i={n * 2 + 9} mode={n ? 'sit' : 'talk'} />
             <Guest x={x + 0.95} y={y} z={T_Z} rot={-Math.PI / 2} i={n * 2 + 10} />
-            <Plate pos={[x - 0.3, top + 0.77, T_Z]} />
-            <Plate pos={[x + 0.3, top + 0.77, T_Z]} />
+            <Dish pos={[x - 0.3, top + 0.785, T_Z]} kind={[8, 6][n]} rot={-Math.PI / 2} />
+            <Dish pos={[x + 0.3, top + 0.785, T_Z]} kind={[10, 2][n]} rot={Math.PI / 2} />
             <Drink pos={[x, top + 0.77, T_Z + 0.3]} color="#E39A3B" />
           </group>
         )

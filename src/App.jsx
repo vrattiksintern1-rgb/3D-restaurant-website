@@ -1,14 +1,20 @@
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls } from '@react-three/drei'
 import Characters from './Characters'
-import { useState } from 'react'
-import CameraRig, { Menu } from './CameraRig'
+import Babies from './Babies'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import CameraRig, { ZONE_KEYS, camState, safeArea, useViewport } from './CameraRig'
+import Menu from './Menu'
 import Actions from './Actions'
 import Intro from './Intro'
-import Lights, { NightToggle } from './Lights'
+import Lights, { BACKDROP, NightToggle } from './Lights'
+import { Crossfade, Grabber, Ready, SceneFx, SoundToggle } from './Ambience'
+import { CREDIT_URL } from './ui'
 import Food from './Food'
 import Journey from './Journey'
+import BarStory from './BarStory'
 import Outside from './Outside'
+import Neighbourhood from './Neighbourhood'
+import Ground from './Ground'
 import Sections from './Sections'
 
 const C = {
@@ -33,41 +39,7 @@ function Zone({ x, z, w, d, color }) {
   return <Box pos={[x, 0.05, z]} size={[w, 0.1, d]} color={color} />
 }
 
-/* ---------- Dining ---------- */
-function Chair({ angle }) {
-  const r = 1.05
-  const x = Math.sin(angle) * r
-  const z = Math.cos(angle) * r
-  return (
-    <group position={[x, 0, z]} rotation={[0, angle, 0]}>
-      <Box pos={[0, 0.4, 0]} size={[0.45, 0.08, 0.45]} color={C.terra} />
-      <Box pos={[0, 0.65, 0.2]} size={[0.45, 0.5, 0.06]} color={C.terra} />
-      <Box pos={[0, 0.2, 0]} size={[0.08, 0.4, 0.08]} color={C.wood} />
-    </group>
-  )
-}
-
-function Table({ x, z }) {
-  return (
-    <group position={[x, 0.1, z]}>
-      <mesh position={[0, 0.35, 0]} castShadow>
-        <cylinderGeometry args={[0.1, 0.18, 0.7, 12]} />
-        <meshStandardMaterial color={C.wood} />
-      </mesh>
-      <mesh position={[0, 0.75, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.7, 0.7, 0.1, 24]} />
-        <meshStandardMaterial color={C.cream} />
-      </mesh>
-      <Chair angle={Math.PI / 2} />
-      <Chair angle={(3 * Math.PI) / 2} />
-    </group>
-  )
-}
-
-const tables = [
-  [-0.2, 1.5], [3.2, 1.5], [6.6, 1.5],
-  [-0.2, 4.5], [3.2, 4.5], [6.6, 4.5],
-]
+/* ---------- Dining: tables, chairs ane customers have Journey.jsx ma chhe (DINING_HALL config) ---------- */
 
 /* ---------- Plant ---------- */
 function Plant({ x, z }) {
@@ -150,23 +122,70 @@ function Lounge() {
 export default function App() {
   const [zone, setZone] = useState('overview')
   const [night, setNight] = useState(false)
+  const [revealed, setRevealed] = useState(false)
+  const sceneReady = useRef(false)
+  const grab = useRef()
+  const fade = useRef()
+  const [vw, vh] = useViewport()
+  const compact = safeArea(vw, vh).compact
+
+  const onReveal = useCallback(() => setRevealed(true), [])
+  const onSceneReady = useCallback(() => (sceneReady.current = true), [])
+
+  const toggleNight = () => {
+    fade.current?.play(grab.current?.())
+    setNight((n) => !n)
+  }
+
+  // Touch swipe on the scene: left = next section, right = previous (zoomed in, one finger pans instead)
+  useEffect(() => {
+    let start = null
+    const onStart = (e) => {
+      start = e.touches.length === 1 && e.target.tagName === 'CANVAS' && !camState.zoomedIn
+        ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: performance.now() }
+        : null
+    }
+    const onEnd = (e) => {
+      if (!start) return
+      const dx = e.changedTouches[0].clientX - start.x
+      const dy = e.changedTouches[0].clientY - start.y
+      const fast = performance.now() - start.t < 800
+      start = null
+      if (!fast || Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.4) return
+      setZone((z) => {
+        const n = ZONE_KEYS.length
+        const i = ZONE_KEYS.indexOf(z) + (dx < 0 ? 1 : -1)
+        return ZONE_KEYS[(i + n) % n]
+      })
+    }
+    window.addEventListener('touchstart', onStart, { passive: true })
+    window.addEventListener('touchend', onEnd, { passive: true })
+    return () => {
+      window.removeEventListener('touchstart', onStart)
+      window.removeEventListener('touchend', onEnd)
+    }
+  }, [])
 
   return (
     <div
+      className={`app${revealed ? ' is-revealed' : ''}${compact ? ' is-compact' : ''}${night ? ' is-night' : ''}`}
       style={{
-        width: '100vw',
-        height: '100vh',
-        background: night ? '#1B1410' : C.cream,
+        position: 'fixed',
+        inset: 0,
+        overflow: 'hidden',
+        background: night ? BACKDROP.night : BACKDROP.day,
       }}
     >
       <Canvas
         flat
-        shadows
+        shadows="percentage"
         orthographic
-        camera={{ position: [14, 12, 14], zoom: 50 }}
+        camera={{ position: [230, 200, 230], zoom: 50, far: 4000 }}
       >
         <Lights night={night} />
         <Outside night={night} />
+        <Neighbourhood night={night} />
+        <Ground />
 
         <Box pos={[0, -0.15, -3]} size={[16, 0.3, 18]} color={C.wood} />
 
@@ -194,10 +213,6 @@ export default function App() {
         </mesh>
         <Box pos={[3.4, 2.64, -6.1]} size={[8.1, 0.06, 0.12]} color={C.wood} />
 
-        {tables.map(([x, z], i) => (
-          <Table key={i} x={x} z={z} />
-        ))}
-
         <Reception />
         <Kitchen />
         <Lounge />
@@ -209,15 +224,28 @@ export default function App() {
 
         <Food />
         <Characters />
-        <Journey />
+        <Babies />
+        <Journey night={night} />
+        <BarStory night={night} />
 
-        <CameraRig zone={zone} />
+        <Grabber api={grab} />
+        <Ready onReady={onSceneReady} />
+        <CameraRig zone={zone} started={revealed} />
       </Canvas>
 
-      <Menu zone={zone} setZone={setZone} />
+      <Crossfade ref={fade} />
+      <SceneFx night={night} />
+
+      <Menu zone={zone} setZone={setZone} compact={compact} />
+      <div className="top-actions reveal" style={{ '--i': 1 }}>
+        <SoundToggle />
+        <NightToggle night={night} onToggle={toggleNight} compact={compact} />
+      </div>
       <Actions />
-      <NightToggle night={night} setNight={setNight} />
-      <Intro />
+      <a className="credit reveal" style={{ '--i': 3 }} href={CREDIT_URL} target="_blank" rel="noopener noreferrer">
+        Crafted by Vrattiks
+      </a>
+      <Intro sceneReady={sceneReady} onReveal={onReveal} />
     </div>
   )
 }
